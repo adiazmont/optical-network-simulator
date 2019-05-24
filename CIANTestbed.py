@@ -9,38 +9,38 @@ import numpy as np
 class CIANTestbed():
 
     def __init__(self):
-        
+
         # Create a Network object
         self.net = Network()
-        
+
         nodes = []
         edfa_gains = []
         self.training_parameters = ()
         # Create the nodes of the network
-        n1 = Node(1, amplifier=Amplifier(target_gain=9), type=0)# Tx node
+        n1 = Node(1, amplifier=Amplifier(target_gain=9), node_type='tx')# Tx node
         nodes.append(n1)
         edfa_gains.append(9)
-        n2 = Node(2, amplifier=Amplifier(target_gain=9), type=1) # in-line node
+        n2 = Node(2, amplifier=Amplifier(target_gain=9), node_type='inline') # in-line node
         nodes.append(n2)
         edfa_gains.append(9)
-        n3 = Node(3, type=1) # in-line node
+        n3 = Node(3, node_type='inline') # in-line node
         nodes.append(n3)
-        n4 = Node(4, amplifier=Amplifier(target_gain=18), type=1) # in-line node
+        n4 = Node(4, amplifier=Amplifier(target_gain=18), node_type='inline') # in-line node
         nodes.append(n4)
-        n5 = Node(5, amplifier=Amplifier(target_gain=18), type=1) # in-line node
+        n5 = Node(5, amplifier=Amplifier(target_gain=18), node_type='inline') # in-line node
         nodes.append(n5)
         edfa_gains.append(18)
-        n6 = Node(6, amplifier=Amplifier(target_gain=9), type=1) # in-line node
+        n6 = Node(6, amplifier=Amplifier(target_gain=9), node_type='inline') # in-line node
         nodes.append(n6)
         edfa_gains.append(9)
-        n7 = Node(7, type=1) # in-line node
+        n7 = Node(7, node_type='inline') # in-line node
         nodes.append(n7)
-        n8 = Node(8, type=2) # Rx node
+        n8 = Node(8, node_type='rx') # Rx node
         nodes.append(n8)
-        
+
         for node in nodes:
             self.net.addNode(node)
-            
+
         links = []
         # Create links of the network
         l1 = Link(n1, n2)
@@ -59,10 +59,10 @@ class CIANTestbed():
         links.append(l7)
         l8 = Link(n7, n8)
         links.append(l8)
-        
+
         for link in links:
             self.net.addLink(link)
-            
+
         # Create spans of the links
         fibre_attenuation = 0.2
         span_link1 = Span(length=45, fibre_attenuation=fibre_attenuation)
@@ -70,30 +70,30 @@ class CIANTestbed():
         span_link5 = Span(length=45, fibre_attenuation=fibre_attenuation)
         span_link6 = Span(length=20, fibre_attenuation=fibre_attenuation)
         span_link7 = Span(length=25, fibre_attenuation=fibre_attenuation)
-        
+
         # Add spans to the links
-        self.net.addSpanToLink(l1, span_link1, Amplifier(target_gain=fibre_attenuation*span_link1.getFibreSpanLength(), wavelengthDependentGainId=0))
-        edfa_gains.append(fibre_attenuation*span_link1.getFibreSpanLength())
-        self.net.addSpanToLink(l2, span_link2, Amplifier(target_gain=fibre_attenuation*span_link2.getFibreSpanLength(), wavelengthDependentGainId=1))
-        edfa_gains.append(fibre_attenuation*span_link2.getFibreSpanLength())
-        self.net.addSpanToLink(l5, span_link5, Amplifier(target_gain=fibre_attenuation*span_link5.getFibreSpanLength(), wavelengthDependentGainId=1))
-        edfa_gains.append(fibre_attenuation*span_link5.getFibreSpanLength())
-        self.net.addSpanToLink(l6, span_link6, Amplifier(target_gain=fibre_attenuation*span_link6.getFibreSpanLength(), wavelengthDependentGainId=0))
-        edfa_gains.append(fibre_attenuation*span_link6.getFibreSpanLength())
-        self.net.addSpanToLink(l7, span_link7, Amplifier(target_gain=fibre_attenuation*span_link7.getFibreSpanLength(), wavelengthDependentGainId=1))
-        edfa_gains.append(fibre_attenuation*span_link7.getFibreSpanLength())
-        
+        self.net.addSpanToLink(l1, span_link1, Amplifier(target_gain=fibre_attenuation*span_link1.length, wavelengthDependentGainId='wdg1'))
+        edfa_gains.append(fibre_attenuation*span_link1.length)
+        self.net.addSpanToLink(l2, span_link2, Amplifier(target_gain=fibre_attenuation*span_link2.length, wavelengthDependentGainId='wdg2'))
+        edfa_gains.append(fibre_attenuation*span_link2.length)
+        self.net.addSpanToLink(l5, span_link5, Amplifier(target_gain=fibre_attenuation*span_link5.length, wavelengthDependentGainId='wdg2'))
+        edfa_gains.append(fibre_attenuation*span_link5.length)
+        self.net.addSpanToLink(l6, span_link6, Amplifier(target_gain=fibre_attenuation*span_link6.length, wavelengthDependentGainId='wdg1'))
+        edfa_gains.append(fibre_attenuation*span_link6.length)
+        self.net.addSpanToLink(l7, span_link7, Amplifier(target_gain=fibre_attenuation*span_link7.length, wavelengthDependentGainId='wdg2'))
+        edfa_gains.append(fibre_attenuation*span_link7.length)
+
         # Dynamic part
         route = [(n1, l1), (n2, l2), (n3, l4), (n5, l5), (n6, l6), (n7, l8), (n8, None)]
-        
+
 #        link_load_30 = 27 + 1
         link_load_70 = 63 + 1
-        
+
         channels = random.sample(range(1, 91),  link_load_70)
         channel_to_analyze = channels[-1] - 1
         launch_power = -20
         self.net.transmit(n1, n8, route, channels=channels, launch_power=launch_power)
-        
+
         channel = round(1529.2+channel_to_analyze*0.4, 2)
         osnr_level = self.net.monitor(l6, span_link6, channel_to_analyze)
         wss_no = 5
@@ -107,10 +107,10 @@ class CIANTestbed():
         [training_parameters.append(x) for x in edfa_gains]
         [training_parameters.append(x) for x in awl.values()]
         training_parameters.append(osnr_level)
-        
+
         self.training_parameters = tuple(training_parameters)
-        
-        
+
+
     def check_bins(self, channels):
         bin1 = []
         bin2 = []
