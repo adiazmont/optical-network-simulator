@@ -1,34 +1,20 @@
-description_files_dir = '/home/alan/Trinity-College/Research/opticalMAN/description-files/'
-wdg_file_1 = "wdg1.txt"
-wdg_file_2 = "wdg2.txt"
+description_files_dir = 'description-files/'
+description_files = { 'wdg1': 'wdg1.txt', 'wdg2': 'wdg2.txt'}
 
 class Amplifier():
-    
-    def __init__(self, target_gain=18, noise_figure=6, wavelengthDependentGainId=0):
+
+    def __init__(self, target_gain=18, noise_figure=6, wavelengthDependentGainId='wdg1'):
+        """target_gain: target gain in dB (18)
+           noise_figure: noise figure in dB (6)
+           wavelengthDependentGainId: description identifier ('wdg1')"""
         self.amplifier_id = id(self)
         self.target_gain = target_gain
         self.noise_figure = noise_figure
-        
-        self.wavelengthDependentGain = self.setWavelengthDependentGain(wavelengthDependentGainId)
-        
-    def setWavelengthDependentGain(self, wavelengthDependentGainId):
-        wavelengthDependentGain = []
-        if wavelengthDependentGainId == 0:
-            f = open(description_files_dir +wdg_file_1 , "r")
-            for line in f.readlines():
-                wavelengthDependentGain.append(float(line))
-        else:
-            f = open(description_files_dir + wdg_file_2, "r")
-            for line in f.readlines():
-                wavelengthDependentGain.append(float(line))
-        return wavelengthDependentGain
-    
-    def getWavelengthDependentGain(self, channel):
-        return self.wavelengthDependentGain[channel]
-        
-    def getNoiseFigure(self):
-        return self.noise_figure
-        
-    def getTargetGain(self):
-        return self.target_gain
-        
+        self.wavelength_dependent_gain =  (
+            self.loadWavelengthDependentGain(wavelengthDependentGainId))
+
+    def loadWavelengthDependentGain(self, wavelengthDependentGainId):
+        "Return wavelength dependent gain array"
+        wdg_file = description_files[wavelengthDependentGainId]
+        with open(description_files_dir + wdg_file, "r") as f:
+            return [float(line) for line in f]

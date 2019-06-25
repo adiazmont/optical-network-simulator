@@ -3,7 +3,7 @@
 import sys, os
 import subprocess
 
-if len(sys.argv) is not 2:
+if len(sys.argv) != 2:
     print("Err: test script must receive a test-file name\n e.g., python test.py test_node")
     sys.exit(0)
 
