@@ -4,6 +4,7 @@ from link import Link
 from span import Span
 from amplifier import Amplifier
 from transmissionSystem import TransmissionSystem
+from graphics import Graphic
 import random
 import numpy as np
 
@@ -84,83 +85,38 @@ class CIANTestbed():
         self.net.addSpanToLink(l7, span_link7, Amplifier(target_gain=fibre_attenuation*span_link7.length, wavelengthDependentGainId='wdg2'))
         edfa_gains.append(fibre_attenuation*span_link7.length)
 
-        # Dynamic part
         route = [(n1, l1), (n2, l2), (n3, l4), (n5, l5), (n6, l6), (n7, l8), (n8, None)]
-
-#        link_load_30 = 27 + 1
-        link_load_70 = 63 + 1
-
-        #channels = random.sample(range(1, 91),  link_load_70)
-        channels = [25,26,27,28]
-        channel_to_analyze = channels[-1] - 1
-        launch_power = -20
+        channels = [81, 82, 83, 84, 85]
         transmission_system = TransmissionSystem(spectrum_band='C', bandwidth=12e9, grid=0.4e-9, launch_power=-40)
         self.net.transmit(transmission_system, n1, n8, route, channels=channels)
 
-        channel = round(1529.2+channel_to_analyze*0.4, 2)
-        osnr_level = self.net.monitor(l6, span_link6, channel_to_analyze)
-        print(osnr_level)
-        wss_no = 5
-        edfa_no = 8
-        total_link_length = 45 + 70 + 45 + 20
-        awl = self.check_bins(channels)
-        average_edfa_gain = np.mean(edfa_gains)
-        wss_no_x_attenuation = wss_no * 9
-        #edfa_no * average_edfa_gain
-        training_parameters = [channel, wss_no, edfa_no, total_link_length, launch_power, average_edfa_gain, wss_no_x_attenuation]
-        [training_parameters.append(x) for x in edfa_gains]
-        [training_parameters.append(x) for x in awl.values()]
-        training_parameters.append(osnr_level)
+        channel = 1529.2 + 82 * 0.4
+        osnr_values = []
+        spans_length = []
+        print("OSNR of channel %s (nm) is %s dB at span %s." % (str(channel), str(self.net.monitor(0, 0, 82)), 0))
+        osnr_values.append(self.net.monitor(0, 0, 82))
+        spans_length.append(0)
+        print("OSNR of channel %s (nm) is %s dB at span %s." % (
+        str(channel), str(self.net.monitor(l1, span_link1, 82)), span_link1.span_id))
+        osnr_values.append(self.net.monitor(l1, span_link1, 82))
+        spans_length.append(span_link1.length)
+        print("OSNR of channel %s (nm) is %s dB at span %s." % (
+        str(channel), str(self.net.monitor(l2, span_link2, 82)), span_link2.span_id))
+        osnr_values.append(self.net.monitor(l2, span_link2, 82))
+        spans_length.append(span_link2.length)
+        print("OSNR of channel %s (nm) is %s dB at span %s." % (
+        str(channel), str(self.net.monitor(l5, span_link5, 82)), span_link5.span_id))
+        osnr_values.append(self.net.monitor(l5, span_link5, 82))
+        spans_length.append(span_link5.length)
+        print("OSNR of channel %s (nm) is %s dB at span %s." % (
+        str(channel), str(self.net.monitor(l6, span_link6, 82)), span_link6.span_id))
+        osnr_values.append(self.net.monitor(l6, span_link6, 82))
+        spans_length.append(span_link7.length)
 
-        self.training_parameters = tuple(training_parameters)
+        graphics = Graphic()
+        graphics.plot_osnr_increment(osnr_values, spans_length)
+        # Display network topology
+        self.net.topology()
 
-
-    def check_bins(self, channels):
-        bin1 = []
-        bin2 = []
-        bin3 = []
-        bin4 = []
-        bin5 = []
-        bin6 = []
-        bin7 = []
-        bin8 = []
-        bin9 = []
-        bin10 = []
-        bins = {}
-
-        for channel in channels:
-            if channel <= 9:
-                bin1.append(channel)
-            elif channel <= 18:
-                bin2.append(channel)
-            elif channel <= 27:
-                bin3.append(channel)
-            elif channel <= 36:
-                 bin4.append(channel)
-            elif channel <= 45:
-                bin5.append(channel)
-            elif channel <= 54:
-                bin6.append(channel)
-            elif channel <= 63:
-                bin7.append(channel)
-            elif channel <= 72:
-                bin8.append(channel)
-            elif channel <= 81:
-                bin9.append(channel)
-            elif channel <= 90:
-                bin10.append(channel)
-
-        bins[1] = len(bin1)
-        bins[2] = len(bin2)
-        bins[3] = len(bin3)
-        bins[4] = len(bin4)
-        bins[5] = len(bin5)
-        bins[6] = len(bin6)
-        bins[7] = len(bin7)
-        bins[8] = len(bin8)
-        bins[9] = len(bin9)
-        bins[10] = len(bin10)
-
-        return bins
 
 tt = CIANTestbed()
