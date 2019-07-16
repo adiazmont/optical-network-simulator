@@ -1,11 +1,11 @@
 import numpy as np
-from activeChannels import ActiveChannels
 
 
 def db_to_abs(dB_value):
     "Convert dB to absolute value"
     absolute_value = 10**(dB_value/float(10))
     return absolute_value
+
 
 def abs_to_db(absolute_value):
     "Convert absolute value to dB"
@@ -15,32 +15,25 @@ def abs_to_db(absolute_value):
 
 class TransmissionSystem(object):
 
-    def __init__(self, spectrum_band, bandwidth, grid):
+    def __init__(self, spectrum_band='C', bandwidth=12e9, grid=0.4e-9, launch_power=-2):
         self.spectrum_band = spectrum_band
         self.bandwidth = bandwidth
         self.grid = grid
-        self.activeChannels = ActiveChannels()
+        self.launch_power = launch_power
 
-    def monitor(self, link, span, channel):
-        "Return OSNR for link, span and channel"
-        channel_power = self.activeChannels.get_active_channel_power(link, span, channel)
-        channel_noise = self.activeChannels.get_active_channel_noise(link, span, channel)
-        osnr = abs_to_db(channel_power/channel_noise)
-        return osnr
-
-    def run(self, path, wavelength_channels, launch_power):
+    def run(self, activeChannels, path, wavelength_channels):
         """Run transmission system, returning True on success
            path: list of Span tuples (span, amplifier)
            wavelength_channels: active channels
            launch_power: launch power in dB"""
 
         # Initialize active channels data structures
-        self.activeChannels.init(path)
+        activeChannels.init(path)
 
         # Update power and noise for every channel
         for channel in wavelength_channels:
             channel = channel - 1
-            input_power = db_to_abs(launch_power)
+            input_power = db_to_abs(self.launch_power)
             input_noise = db_to_abs(float("-inf"))
 
             txNode = True
@@ -67,15 +60,15 @@ class TransmissionSystem(object):
 
                         # The signal (and noise) traversing the first span already
                         # perceived the impairments of the first node
-                        input_power, input_noise = self.activeChannels.output_power_noise(
+                        input_power, input_noise = activeChannels.output_power_noise(
                             input_power, input_noise, channel, amplifierTargetGain,
                             amplifierWavelengthDependentGain, amplifierNoiseFigure, self.bandwidth, self.grid)
 
                         # insert "new" channel-power_level relation to active_channels.
                         if txNode:
-                            self.activeChannels.set_active_channel_original(
+                            activeChannels.set_active_channel_original(
                                 0, 0, channel, input_power, input_noise, amplifierWavelengthDependentGain)
-                            self.activeChannels.set_active_channel_nonlinear(
+                            activeChannels.set_active_channel_nonlinear(
                                 0, 0, channel, input_power, input_noise, amplifierWavelengthDependentGain)
                             txNode = False
 
@@ -97,40 +90,40 @@ class TransmissionSystem(object):
                             amplifierTargetGain = db_to_abs(amplifier.target_gain)
                             amplifierNoiseFigure = db_to_abs(amplifier.noise_figure)
 
-                            output_power, output_noise = self.activeChannels.output_power_noise(
+                            output_power, output_noise = activeChannels.output_power_noise(
                                 input_power, input_noise, channel, amplifierTargetGain,
                                 amplifierWavelengthDependentGain, amplifierNoiseFigure, self.bandwidth, self.grid)
 
                             # insert "new" channel-power_level relation to active_channels.
-                            self.activeChannels.set_active_channel_original(
+                            activeChannels.set_active_channel_original(
                                 link, span, channel, output_power, output_noise, amplifierWavelengthDependentGain)
-                            self.activeChannels.set_active_channel_nonlinear(
+                            activeChannels.set_active_channel_nonlinear(
                                 link, span, channel, output_power, output_noise, amplifierWavelengthDependentGain)
 
                         for span, _amplifier in link.spans:
                             # This is done at this point, because the input_power to be used
                             # for the computation of the output_power is already sharing
                             # the fibre with other channels (if any).
-                            active_channels_per_span = self.activeChannels.get_active_channels_original(link, span)
+                            active_channels_per_span = activeChannels.get_active_channels_original(link, span)
                             # Check if active channels is  not single channel, or
                             # if the loop is not at the last EDFA.
-                            if (len(active_channels_per_span) > 1):
+                            if len(active_channels_per_span) > 1:
                                 # compute SRS impairment
-                                new_active_channels_per_span = self.activeChannels.zirngibl_srs(
+                                new_active_channels_per_span = activeChannels.zirngibl_srs(
                                     active_channels_per_span, span.length,
                                     span.fibre_attenuation, self.grid)
-                                self.activeChannels.update_active_channels_nonlinear(
+                                activeChannels.update_active_channels_nonlinear(
                                     link, span, new_active_channels_per_span)
                                 # Store not normalized power and noise levels
                                 # to be considered in the power excursion calculation
                                 not_normalized_power, not_normalized_noise = (
-                                    self.activeChannels.get_active_channels_power_noise_nonlinear(link, span))
+                                    activeChannels.get_active_channels_power_noise_nonlinear(link, span))
                                 # Consider channel-normalization per-span
-                                self.activeChannels.normalize_channel_levels(link, span)
+                                activeChannels.normalize_channel_levels(link, span)
                                 # Consider power excursion and propagation per-span
-                                self.activeChannels.power_excursion_propagation(
+                                activeChannels.power_excursion_propagation(
                                     link, span, not_normalized_power, not_normalized_noise)
 
                         input_power = output_power
                         input_noise = output_noise
-        return True
+        return activeChannels

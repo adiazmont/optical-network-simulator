@@ -1,19 +1,26 @@
-from transmissionSystem import TransmissionSystem
+from activeChannels import ActiveChannels
 import random
+import numpy as np
+
+
+def abs_to_db(absolute_value):
+    "Convert absolute value to dB"
+    dB_value = 10 * np.log10(absolute_value)
+    return dB_value
 
 # Class for network generation
 class Network(object):
 
     # Generate the abstract topology
-    def __init__(self, spectrum_band='C', bandwidth=12.5*(10E9), grid=0.4*(10E-9)):
+    def __init__(self, spectrum_band='C', bandwidth=12.5e9, grid=0.4e-9):
         self.network = {}
         self.nodes = []
         self.links = {}
-        self.transmission = TransmissionSystem(spectrum_band, bandwidth, grid)
+        self.activeChannels = ActiveChannels()
 
     def addNode(self, new_node):
         if new_node in self.nodes:
-            raise ValueError("network.addNode \'%s\' already in network!" %new_node)
+            raise ValueError("network.addNode \'%s\' already in network!" % new_node)
 
         self.nodes.append(new_node)
         self.network[new_node] = []
@@ -28,26 +35,27 @@ class Network(object):
         link.addSpan(span, amplifier)
         self.links[link].append((span, amplifier))
 
-    def transmit(self, src_node, dst_node, route='auto', spectrum_band='C',
-                 channel_no=1, channels='auto', launch_power=-2, bandwidth=12.5*(10E9), grid=0.4*(10E-9)):
-        if route=='auto':
+    # Enables network functions (i.e., route computation)
+    def transmit(self, transmission_system, src_node, dst_node, route='auto',
+                 channel_no=1, channels='auto'):
+        if route == 'auto':
             path = self.findPath(src_node, dst_node)
         else:
             path = route
 
-        if channels=='auto':
+        if channels == 'auto':
             wavelength_channels = self.getWavelengthChannels(channel_no)
         else:
             wavelength_channels = channels
 
-       # transmission = TransmissionSystem(spectrum_band, bandwidth, grid)
-        if self.transmission.run(path, wavelength_channels, launch_power):
-            print("network.transmit: Transmission successful!")
-        else:
-            print("network.transmit: Error in transmission.")
+        self.activeChannels = transmission_system.run(self.activeChannels, path, wavelength_channels)
 
     def monitor(self, link, span, channel):
-        return self.transmission.monitor(link, span, channel)
+        "Return OSNR for link, span and channel"
+        channel_power = self.activeChannels.get_active_channel_power(link, span, channel)
+        channel_noise = self.activeChannels.get_active_channel_noise(link, span, channel)
+        osnr = abs_to_db(channel_power/channel_noise)
+        return osnr
 
     def getWavelengthChannels(self, channel_no):
         return random.sample(range(1, 91),  channel_no)

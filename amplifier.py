@@ -10,7 +10,7 @@ class Amplifier():
         self.amplifier_id = id(self)
         self.target_gain = target_gain
         self.noise_figure = noise_figure
-        self.wavelength_dependent_gain =  (
+        self.wavelength_dependent_gain = (
             self.loadWavelengthDependentGain(wavelengthDependentGainId))
 
     def loadWavelengthDependentGain(self, wavelengthDependentGainId):

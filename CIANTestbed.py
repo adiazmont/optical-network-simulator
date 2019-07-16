@@ -89,13 +89,15 @@ class CIANTestbed():
 #        link_load_30 = 27 + 1
         link_load_70 = 63 + 1
 
-        channels = random.sample(range(1, 91),  link_load_70)
+        #channels = random.sample(range(1, 91),  link_load_70)
+        channels = [25,26,27,28]
         channel_to_analyze = channels[-1] - 1
         launch_power = -20
         self.net.transmit(n1, n8, route, channels=channels, launch_power=launch_power)
 
         channel = round(1529.2+channel_to_analyze*0.4, 2)
         osnr_level = self.net.monitor(l6, span_link6, channel_to_analyze)
+        print(osnr_level)
         wss_no = 5
         edfa_no = 8
         total_link_length = 45 + 70 + 45 + 20

@@ -3,6 +3,7 @@ import math
 import numpy as np
 import scipy.constants as sc
 import macros as mc
+import matplotlib.pyplot as plt
 
 class ActiveChannels():
     def __init__(self):
@@ -56,12 +57,9 @@ class ActiveChannels():
                     self.active_channels_per_link_nonlinear[link][span].append({}) # amplifier wavelength dependent gain
 
     def set_active_channel_original(self, link_id, span_id, channel, power_level,  noise_level,  amplifier_attenuation):
-#        try:
         self.active_channels_per_link_original[link_id][span_id][0][channel] = power_level
         self.active_channels_per_link_original[link_id][span_id][1][channel] = noise_level
         self.active_channels_per_link_original[link_id][span_id][2][channel] = amplifier_attenuation
-#        except:
-#            print("activeChannels.set_active_channel_original: Unable to insert active channel: %s" %channel)
 
     def set_active_channel_nonlinear(self, link_id, span_id, channel, power_level,  noise_level,  amplifier_attenuation):
         try:
@@ -147,54 +145,59 @@ class ActiveChannels():
             self.active_channels_per_link_nonlinear[link_id][span_id][index][channel_key] = active_channels_per_span_list[i]
         return 0
 
-    def output_power_noise(self, input_power, input_noise, channel, target_gain, amplifierWavelengthDependentGain, amplifierNoiseFigure, bandwidth, grid):
+    def output_power_noise(self, input_power, input_noise, channel, target_gain,
+                           amplifierWavelengthDependentGain, amplifierNoiseFigure, bandwidth, grid):
         output_power = target_gain * input_power * amplifierWavelengthDependentGain
-        output_noise = self.output_noise(input_noise, channel, amplifierWavelengthDependentGain*target_gain, amplifierNoiseFigure, bandwidth, grid)
+        output_noise = self.output_noise(input_noise, channel, amplifierWavelengthDependentGain*target_gain,
+                                         amplifierNoiseFigure, bandwidth, grid)
         return output_power, output_noise
 
     def output_noise(self, input_noise, channel, sys_gain, amplifierNoiseFigure, bandwidth, grid):
         channel = channel + 1
-        c_band_lambda = 1529.2*mc.nm+channel*grid # Starting in 1530 nm (C-band)
-        out_noise = (input_noise * sys_gain) + (sc.h*(sc.speed_of_light/c_band_lambda) * sys_gain * amplifierNoiseFigure * bandwidth)
+        c_band_lambda = 1529.2*mc.nm+channel*grid  # Starting in 1530 nm (C-band)
+        out_noise = (input_noise * sys_gain) + (sc.h*(sc.speed_of_light/c_band_lambda)
+                                                * sys_gain * amplifierNoiseFigure * bandwidth)
 
         return out_noise
 
-
     def zirngibl_srs (self, channel_powers, span_length, fibre_attenuation, grid):
-		# Type channels_powers: dict - i.e. {2:-3.1, 85:-1.1}
-		# Type span_length: float - i.e. 80.0
-		# Return type:  dict - i.e. {2:-3.3, 85:-0.9}
-        """This is a mathmatical model to estimate Stimulated Raman Scattering in SMF.
-		wmo@optics.arizona.edu
+        """
+        Type channels_powers: dict - i.e. {2:-3.1, 85:-1.1}
+        Type span_length: float - i.e. 80.0
+        Return type:  dict - i.e. {2:-3.3, 85:-0.9}
+        This is a mathmatical model to estimate Stimulated Raman Scattering in SMF.
+        wmo@optics.arizona.edu
 
-		M. Zirngibl Analytical model of Raman gain effects in massive wavelength division multiplexed transmission systems, 1998.
-		use Equation (10) for approximation
-		Assumption 1: Raman gain shape as a triangle symmetric the central wavelength
-		Assumption 2: Assume channel distribution symmetric to central wavelength
-		Assumption 3: When calculating the SRS, assume equal power per-channel
-		Assumption 4: SMF Aeff=80um^2, raman amplification band = 15THZ
+        M. Zirngibl Analytical model of Raman gain effects in massive
+        wavelength division multiplexed transmission systems, 1998.
 
-		For more precise model, integrals need be calculated based on the input power spectrum using
-		Equation (7)
+        use Equation (10) for approximation
+        Assumption 1: Raman gain shape as a triangle symmetric the central wavelength
+        Assumption 2: Assume channel distribution symmetric to central wavelength
+        Assumption 3: When calculating the SRS, assume equal power per-channel
+        Assumption 4: SMF Aeff=80um^2, raman amplification band = 15THZ
 
-		Args:
-		channel_powers(dict): key->channel index, value: launch power in dBm
-				       e.g., {2:-3.1, 85:-1.1}
+        For more precise model, integrals need be calculated based on the input power spectrum using
+        Equation (7)
 
-		span_length (float) - in kilometer, e.g., 80.0
+        Args:
+        channel_powers(dict): key->channel index, value: launch power in dBm
+                       e.g., {2:-3.1, 85:-1.1}
 
-		Return type:
-		channel_powers(dict): -after SRS effect, key->channel index, value: launch power in dBm
-				          e.g., {2:-3.3, 85:-0.9}
-		"""
+        span_length (float) - in kilometer, e.g., 80.0
+
+        Return type:
+        channel_powers(dict): -after SRS effect, key->channel index, value: launch power in dBm
+                          e.g., {2:-3.3, 85:-0.9}
+        """
         min_wavelength_index = min(channel_powers.keys())
         max_wavelength_index = max(channel_powers.keys())
         wavelength_min = 1529.2*mc.nm + (min_wavelength_index+1)*grid
         wavelength_max = 1529.2*mc.nm + (max_wavelength_index+1)*grid
-        frequency_min = mc.c/(wavelength_max) #minimum frequency of longest wavelength
-        frequency_max = mc.c/(wavelength_min) #maximum frequency of shortest wavelength
+        frequency_min = mc.c/wavelength_max  # minimum frequency of longest wavelength
+        frequency_max = mc.c/wavelength_min  # maximum frequency of shortest wavelength
 
-        alpha_dB = fibre_attenuation/mc.km; #SMF fiber attenuation in decibels/km
+        alpha_dB = fibre_attenuation/mc.km  #SMF fiber attenuation in decibels/km
         alpha = 1-10**(alpha_dB/float(10)) #SMF fiber attenuation
 
         Lspan = span_length*mc.km #SMF span length
@@ -204,14 +207,14 @@ class ActiveChannels():
         for channel, power_per_channel in channel_powers.items():
             P0 += power_per_channel*mc.mW
 
-        #Calculate delta P for each channel
-        for wavelength_index in channel_powers:  #Apply formula (10)
+        # Calculate delta P for each channel
+        for wavelength_index in channel_powers:  # Apply formula (10)
             wavelength = 1529.2*mc.nm + (wavelength_index+1)*grid
-            frequency = mc.c/wavelength #Frequency of the wavelength of interest
-            R1 = mc.beta*P0*Leff*(frequency_max-frequency_min)*math.e**(mc.beta*P0*Leff*(frequency_max-frequency)) #term 1
-            R2 = math.e**(mc.beta*P0*Leff*(frequency_max-frequency_min))-1 #term 2
+            frequency = mc.c/wavelength  # Frequency of the wavelength of interest
+            R1 = mc.beta*P0*Leff*(frequency_max-frequency_min)*math.e**(mc.beta*P0*Leff*(frequency_max-frequency))  # term 1
+            R2 = math.e**(mc.beta*P0*Leff*(frequency_max-frequency_min))-1  # term 2
 
-            delta_P = float(R1/R2) # Does the aritmetics in mW
+            delta_P = float(R1/R2)  # Does the arithmetic in mW
             channel_powers[wavelength_index] *= delta_P
 
         return channel_powers
@@ -258,7 +261,7 @@ class ActiveChannels():
         power_excursion_prop = [p*excursion for p in total_power]  # new
 
         # update current power levels with the excursion propagation
-        self.update_active_channels_dict_nonlinear(link_id,  span_id,  power_excursion_prop,  0) # new
+        self.update_active_channels_dict_nonlinear(link_id, span_id, power_excursion_prop, 0)
 
     def dB_to_abs(self, value):
         absolute_value = 10**(value/10.0)
