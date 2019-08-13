@@ -297,6 +297,8 @@ class UnitTest:
             self.net.transmit(self.n1, self.n2, signals, route)
 
 
+# Uncomment the lines below to generate the figures found
+# in the subfolder ons-validation
 inspect_osnr_per_distance(osnr_type='gosnr')
 # inspect_osnr_per_span(osnr_type='gosnr')
 # inspect_transmission_per_span(param='signal_nli_noise')

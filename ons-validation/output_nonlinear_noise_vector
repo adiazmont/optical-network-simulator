@@ -1,0 +1,14 @@
+VECTORIZATION ATTEMPT FOR RETRIEVING NONLINEAR NOISE
+THIS TAKES THE SAME (OR SLIGHTLY LONGER) THAN THE
+LOOP APPROACH, HENCE THERE'S ROOM FOR IMPROVEMENT.
+
+    def output_nonlinear_noise(self, signals, nli_noise, active_channels, span, node_amplifier):
+        start = time.time()
+        node_amplifier_gain = db_to_abs(node_amplifier.target_gain)
+        nonlinear_noise = self.nonlinear_noise(signals, active_channels, span, node_amplifier_gain)
+        noise = np.array([nli_noise[k] for k in sorted(nli_noise.keys())]).flatten() * node_amplifier_gain + \
+            np.array([nonlinear_noise[k] for k in sorted(nonlinear_noise.keys())]).flatten()
+        noise_struct = dict(zip(nonlinear_noise.keys(), noise))
+        end = time.time() - start
+        print("1 - It took %s seconds" % str(end))
+        return noise_struct
