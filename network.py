@@ -1,67 +1,99 @@
-from activeChannels import ActiveChannels
-import random
+from transmission_system import TransmissionSystem
 import numpy as np
 
 
 def abs_to_db(absolute_value):
-    "Convert absolute value to dB"
-    dB_value = 10 * np.log10(absolute_value)
-    return dB_value
+    """
+    :param absolute_value: list or float
+    :return: Convert absolute value to dB
+    """
+    db_value = 10 * np.log10(absolute_value)
+    return db_value
 
-# Class for network generation
+
 class Network(object):
 
     # Generate the abstract topology
-    def __init__(self, spectrum_band='C', bandwidth=12.5e9, grid=0.4e-9):
+    def __init__(self):
         self.network = {}
         self.nodes = []
         self.links = {}
-        self.activeChannels = ActiveChannels()
+        self.transmission_system = TransmissionSystem()
 
-    def addNode(self, new_node):
+    def add_node(self, new_node):
         if new_node in self.nodes:
             raise ValueError("network.addNode \'%s\' already in network!" % new_node)
 
         self.nodes.append(new_node)
         self.network[new_node] = []
 
-    def addLink(self, new_link):
+    def add_link(self, new_link):
         self.links[new_link] = []
         src_node = new_link.src_node
         dst_node = new_link.dst_node
         self.network[src_node] .append((dst_node, new_link))
 
-    def addSpanToLink(self, link, span, amplifier=None):
-        link.addSpan(span, amplifier)
+    def add_span_to_link(self, link, span, amplifier=None):
+        link.add_span(span, amplifier)
         self.links[link].append((span, amplifier))
 
-    # Enables network functions (i.e., route computation)
-    def transmit(self, transmission_system, src_node, dst_node, route='auto',
-                 channel_no=1, channels='auto'):
+    def build(self):
+        self.transmission_system.init_interfaces(self.links)
+
+    def transmit(self, src_node, dst_node, signals, route='auto'):
+        """
+        :param src_node: source Node() object
+        :param dst_node: destination Node() object
+        :param signals: signals to transmit sequentially - list[Signal(),]
+        :param route: path from src to node - list[tuple(Node(), Link())]
+        :return:
+        """
         if route == 'auto':
-            path = self.findPath(src_node, dst_node)
+            path = self.find_path(src_node, dst_node)
         else:
             path = route
 
-        if channels == 'auto':
-            wavelength_channels = self.getWavelengthChannels(channel_no)
-        else:
-            wavelength_channels = channels
+        self.transmission_system.propagate(path, signals)
 
-        self.activeChannels = transmission_system.run(self.activeChannels, path, wavelength_channels)
-
-    def monitor(self, link, span, channel):
-        "Return OSNR for link, span and channel"
-        channel_power = self.activeChannels.get_active_channel_power(link, span, channel)
-        channel_noise = self.activeChannels.get_active_channel_noise(link, span, channel)
-        osnr = abs_to_db(channel_power/channel_noise)
+    def monitor(self, link, span, signal_index):
+        """
+        :param link: Link() object
+        :param span: Span() object
+        :param signal_index: int
+        :return: OSNR at given interface in dB - float
+        """
+        signal_power = abs_to_db(self.transmission_system.get_active_channel_power(link, span, signal_index))
+        signal_noise = abs_to_db(self.transmission_system.get_active_channel_ase_noise(link, span, signal_index))
+        # Alternative OSNR computation
+        # osnr = abs_to_db((10**(signal_power/10.0)*0.8-(10**(signal_noise/10.0)*4))/(10**(signal_noise/10.0)))
+        osnr = signal_power - signal_noise
         return osnr
 
-    def getWavelengthChannels(self, channel_no):
-        return random.sample(range(1, 91),  channel_no)
+    def inspect_power_and_noise(self, link, span, signal_index):
+        """
+        :param link: Link() object
+        :param span: Span() object
+        :param signal_index: int
+        :return: dictionary with power and noise(s) level in dB at given interface
+        """
+        _struct = {
+            'signal_power': abs_to_db(self.transmission_system.get_active_channel_power(link, span, signal_index)),
+            'signal_ase_noise': abs_to_db(
+                self.transmission_system.get_active_channel_ase_noise(link, span, signal_index)),
+            'signal_nli_noise': abs_to_db(
+                self.transmission_system.get_active_channel_nli_noise(link, span, signal_index)),
+            'total_noise': abs_to_db(
+                self.transmission_system.get_active_channel_ase_noise(link, span, signal_index) +
+                self.transmission_system.get_active_channel_nli_noise(link, span, signal_index))}
+        return _struct
 
     # Dijkstra algorithm for finding shortest path
-    def findPath(self, src_node, dst_node, path=[]):
+    def find_path(self, src_node, dst_node):
+        """
+        :param src_node: source Node() object
+        :param dst_node: destination Node() object
+        :return:
+        """
         # shortest paths is a dict of nodes
         # whose value is a tuple of (previous node, weight, Link())
         shortest_paths = {src_node: (None, 0, None)}
@@ -85,7 +117,7 @@ class Network(object):
 
             next_destinations = {node: shortest_paths[node] for node in shortest_paths if node not in visited}
             if not next_destinations:
-                return "Route Not Possible"
+                return "network.find_path: Route Not Possible"
             # next node is the destination with the lowest weight
             current_node = min(next_destinations, key=lambda k: next_destinations[k][1])
 
@@ -102,7 +134,11 @@ class Network(object):
         return path
 
     def topology(self):
-        for link in sorted(self.links):
+        """
+        This function requires fixing.
+        :return: dummy representation of the built network
+        """
+        for link in self.links:
             src_node = link.src_node
             dst_node = link.dst_node
             link_string_representation = ""
@@ -118,6 +154,6 @@ class Network(object):
                                                    edfa + str(amplifier.target_gain) + "dB")
                 else:
                     link_string_representation += " ---" + str(span_length) + "km---"
-            str_src_node = roadm + str(src_node.label )
+            str_src_node = roadm + str(src_node.label)
             str_dst_node = roadm + str(dst_node.label)
             print(str_src_node + link_string_representation + "> " + str_dst_node)

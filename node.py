@@ -4,6 +4,7 @@ Tx = 'tx'
 Inline = 'inline'
 Rx = 'rx'
 
+
 class Node(object):
 
     def __init__(self, label, wss_no=1, wss_attenuation=9, amplifier=None, node_type='tx'):
