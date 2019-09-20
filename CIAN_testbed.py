@@ -26,21 +26,21 @@ class CIANTestbed:
 
         nodes = []
         # Create the nodes of the network
-        n1 = Node(1, amplifier=Amplifier(target_gain=9), node_type='tx')  # Tx node
+        n1 = Node(1, amplifier=Amplifier(target_gain=9))
         nodes.append(n1)
-        n2 = Node(2, amplifier=Amplifier(target_gain=9), node_type='inline')  # in-line node
+        n2 = Node(2, amplifier=Amplifier(target_gain=9))
         nodes.append(n2)
-        n3 = Node(3, node_type='inline')  # in-line node
+        n3 = Node(3)
         nodes.append(n3)
-        n4 = Node(4, amplifier=Amplifier(target_gain=18), node_type='inline')  # in-line node
+        n4 = Node(4, amplifier=Amplifier(target_gain=18))
         nodes.append(n4)
-        n5 = Node(5, amplifier=Amplifier(target_gain=18), node_type='inline')  # in-line node
+        n5 = Node(5, amplifier=Amplifier(target_gain=18))
         nodes.append(n5)
-        n6 = Node(6, amplifier=Amplifier(target_gain=9), node_type='inline')  # in-line node
+        n6 = Node(6, amplifier=Amplifier(target_gain=9))
         nodes.append(n6)
-        n7 = Node(7, node_type='inline')  # in-line node
+        n7 = Node(7)
         nodes.append(n7)
-        n8 = Node(8, node_type='rx')  # Rx node
+        n8 = Node(8)
         nodes.append(n8)
 
         for node in nodes:

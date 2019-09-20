@@ -184,48 +184,48 @@ class UnitTest:
         if topo == 'cian':
             nodes = []
             # Create the nodes of the network
-            self.n1 = Node(1, amplifier=Amplifier(target_gain=9), node_type='tx')  # Tx node
+            self.n1 = Node(1, amplifier=Amplifier(target_gain=9))  # Tx node
             nodes.append(self.n1)
-            self.n2 = Node(2, amplifier=Amplifier(target_gain=9), node_type='inline')  # in-line node
+            self.n2 = Node(2, amplifier=Amplifier(target_gain=9))  # in-line node
             nodes.append(self.n2)
-            self.n3 = Node(3, node_type='inline')  # in-line node
+            self.n3 = Node(3)  # in-line node
             nodes.append(self.n3)
-            self.n4 = Node(4, amplifier=Amplifier(target_gain=18), node_type='inline')  # in-line node
+            self.n4 = Node(4, amplifier=Amplifier(target_gain=18))  # in-line node
             nodes.append(self.n4)
-            self.n5 = Node(5, amplifier=Amplifier(target_gain=18), node_type='inline')  # in-line node
+            self.n5 = Node(5, amplifier=Amplifier(target_gain=18))  # in-line node
             nodes.append(self.n5)
-            self.n6 = Node(6, amplifier=Amplifier(target_gain=9), node_type='inline')  # in-line node
+            self.n6 = Node(6, amplifier=Amplifier(target_gain=9))  # in-line node
             nodes.append(self.n6)
-            self.n7 = Node(7, node_type='inline')  # in-line node
+            self.n7 = Node(7)  # in-line node
             nodes.append(self.n7)
-            self.n8 = Node(8, node_type='rx')  # Rx node
+            self.n8 = Node(8)  # Rx node
             nodes.append(self.n8)
 
             # Add nodes to the network object
             for node in nodes:
                 self.net.add_node(node)
 
-            links = []
+            self.links = []
             # Create links of the network
             self.l1 = Link(self.n1, self.n2)
-            links.append(self.l1)
+            self.links.append(self.l1)
             self.l2 = Link(self.n2, self.n3)
-            links.append(self.l2)
+            self.links.append(self.l2)
             self.l3 = Link(self.n3, self.n4)
-            links.append(self.l3)
+            self.links.append(self.l3)
             self.l4 = Link(self.n3, self.n5)
-            links.append(self.l4)
+            self.links.append(self.l4)
             self.l5 = Link(self.n5, self.n6)
-            links.append(self.l5)
+            self.links.append(self.l5)
             self.l6 = Link(self.n6, self.n7)
-            links.append(self.l6)
+            self.links.append(self.l6)
             self.l7 = Link(self.n4, self.n7)
-            links.append(self.l7)
+            self.links.append(self.l7)
             self.l8 = Link(self.n7, self.n8)
-            links.append(self.l8)
+            self.links.append(self.l8)
 
             # Add links to the network object
-            for link in links:
+            for link in self.links:
                 self.net.add_link(link)
 
             # Create spans of the links
@@ -238,15 +238,15 @@ class UnitTest:
 
             # Add spans to the links
             self.net.add_span_to_link(self.l1, self.span_link1,
-                                      Amplifier(target_gain=9, wavelength_dependent_gain_id='wdg1'))
+                                      Amplifier(target_gain=9.9, wavelength_dependent_gain_id='wdg1'))
             self.net.add_span_to_link(self.l2, self.span_link2,
-                                      Amplifier(target_gain=14, wavelength_dependent_gain_id='wdg2'))
+                                      Amplifier(target_gain=15.4, wavelength_dependent_gain_id='wdg2'))
             self.net.add_span_to_link(self.l5, self.span_link5,
-                                      Amplifier(target_gain=9, wavelength_dependent_gain_id='wdg2'))
+                                      Amplifier(target_gain=9.9, wavelength_dependent_gain_id='wdg2'))
             self.net.add_span_to_link(self.l6, self.span_link6,
-                                      Amplifier(target_gain=5, wavelength_dependent_gain_id='wdg1'))
+                                      Amplifier(target_gain=4.4, wavelength_dependent_gain_id='wdg1'))
             self.net.add_span_to_link(self.l7, self.span_link7,
-                                      Amplifier(target_gain=5, wavelength_dependent_gain_id='wdg2'))
+                                      Amplifier(target_gain=5.5, wavelength_dependent_gain_id='wdg2'))
 
             # Build network
             self.net.build()
@@ -262,9 +262,9 @@ class UnitTest:
 
         if topo == 'linear':
             nodes = []
-            self.n1 = Node(1, amplifier=Amplifier(target_gain=9), node_type='tx')  # Tx node
+            self.n1 = Node(1, amplifier=Amplifier(target_gain=9))  # Tx node
             nodes.append(self.n1)
-            self.n2 = Node(2, amplifier=Amplifier(target_gain=9), node_type='rx')  # in-line node
+            self.n2 = Node(2, amplifier=Amplifier(target_gain=9))  # in-line node
             nodes.append(self.n2)
 
             for node in nodes:
@@ -299,11 +299,17 @@ class UnitTest:
 
 # Uncomment the lines below to generate the figures found
 # in the subfolder ons-validation
-inspect_osnr_per_distance(osnr_type='gosnr')
+# inspect_osnr_per_distance(osnr_type='gosnr')
 # inspect_osnr_per_span(osnr_type='gosnr')
 # inspect_transmission_per_span(param='signal_nli_noise')
 # inspect_transmission_per_distance(param='signal_nli_noise')
 # my_network = UnitTest(topo='linear', link_length=500, span_length=100, channels=list(range(1, 9)))
-# my_network.inspect_power(cut=1)
+my_network = UnitTest()
+# osnr = my_network.net.monitor(my_network.l1, my_network.span_link1, 83, my_network.links)
+# osnr = my_network.net.monitor(my_network.l2, my_network.span_link2, 83, my_network.links)
+# osnr = my_network.net.monitor(my_network.l5, my_network.span_link5, 83, my_network.links)
+osnr = my_network.net.monitor(my_network.l6, my_network.span_link6, 83, my_network.links)
+osnr = my_network.net.monitor(my_network.l6, my_network.span_link6, 81, my_network.links)
+# osnr = my_network.net.monitor(my_network.l7, my_network.span_link7, 83, my_network.links)
 # graphics = Graphic()
 # graphics.inspect_srs_before_edfa()

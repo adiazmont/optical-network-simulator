@@ -55,19 +55,37 @@ class Network(object):
 
         self.transmission_system.propagate(path, signals)
 
-    def monitor(self, link, span, signal_index):
+    def monitor(self, target_link, target_span, target_signal_index, links):
         """
-        :param link: Link() object
-        :param span: Span() object
-        :param signal_index: int
-        :return: OSNR at given interface in dB - float
+
+        :param target_link:
+        :param target_span:
+        :param target_signal_index:
+        :param links:
+        :return: OSNR in linear form
         """
-        signal_power = abs_to_db(self.transmission_system.get_active_channel_power(link, span, signal_index))
-        signal_noise = abs_to_db(self.transmission_system.get_active_channel_ase_noise(link, span, signal_index))
-        # Alternative OSNR computation
-        # osnr = abs_to_db((10**(signal_power/10.0)*0.8-(10**(signal_noise/10.0)*4))/(10**(signal_noise/10.0)))
-        osnr = signal_power - signal_noise
-        return osnr
+        osnr_stage_i = 0
+        for link in links:
+            for span, _amplifier in link.spans:
+                input_power = self.transmission_system.input_power[link][span][target_signal_index]
+                ase_noise = \
+                    self.transmission_system.amplified_spontaneous_emission_noise[link][span][target_signal_index]
+                nonlinear_noise = self.transmission_system.nonlinear_interference_noise[link][span][target_signal_index]
+                print("Noise and power at span %s: %s - %s - %s" % (str(span.span_id), str(ase_noise),
+                                                                    str(nonlinear_noise), str(input_power)))
+                if osnr_stage_i == 0:
+                    osnr_stage_i = input_power / (ase_noise * nonlinear_noise)
+                else:
+                    osnr_stage_i = 1 / (1 / osnr_stage_i + ((ase_noise * nonlinear_noise) / input_power))
+                print("OSNR at span %s: %s" % (str(span.span_id), str(osnr_stage_i)))
+                if span.span_id == target_span.span_id:
+                    break
+            if link.link_id == target_link.link_id:
+                break
+
+        final_osnr = osnr_stage_i
+        print("Final OSNR: %s" % str(final_osnr))
+        return 0
 
     def inspect_power_and_noise(self, link, span, signal_index):
         """

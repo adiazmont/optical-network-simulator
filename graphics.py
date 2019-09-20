@@ -14,8 +14,8 @@ class Graphic:
 
         mock = [19.7, 18.2, 16.4, 15.5, 13.5]
         mock2 = [11.5, 10.4, 7.5, 5.9, 4]
-        plt.plot(mock, color='r', marker='*')
-        plt.plot(mock2, color='b', marker='*')
+        # plt.plot(mock, color='k', marker='*')
+        # plt.plot(mock2, color='k', marker='*')
         plt.ylabel("OSNR-ASE (dB)")
         plt.xlabel(
             "# of spans (length of each span: %s, unit: km; total distance: %s km)" % (spans_length, sum(spans_length)))

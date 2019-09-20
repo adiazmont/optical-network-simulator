@@ -4,7 +4,7 @@ import units as unit
 class OpticalSignal:
 
     def __init__(self, index, channel_spacing=0.4*1e-9, launch_power=-2.0,
-                 bandwidth=12.0*1e9, modulation_format="16QAM",
+                 bandwidth=2.99792458*1e9, modulation_format="16QAM",
                  bits_per_symbol=4.0, symbol_rate=0.032*1e12):
         """
         :param index: signal index starting from 1 - int

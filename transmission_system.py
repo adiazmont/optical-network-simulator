@@ -35,16 +35,29 @@ class TransmissionSystem(object):
         #   }
         # }
         # Stores the values of each active channel without considering nonlinearities.
-        self.active_channels = {}
+        self.active_channels = {}  # TO BE REMOVED
+        self.input_power = {}
+        self.output_power = {}
+        self.amplified_spontaneous_emission_noise = {}
+        self.nonlinear_interference_noise = {}
         
     def init_interfaces(self, links):
 
         for link in links:
             self.active_channels[link] = {}
+            self.input_power[link] = {}
+            self.output_power[link] = {}
+            self.amplified_spontaneous_emission_noise[link] = {}
+            self.nonlinear_interference_noise[link] = {}
             spans = link.spans
             for span, _amplifier in spans:
                 self.active_channels[link][span] = {"power": {}, "ase_noise": {}, "nli_noise": {}, "wdg": {}}
+                self.input_power[link][span] = {}
+                self.output_power[link][span] = {}
+                self.amplified_spontaneous_emission_noise[link][span] = {}
+                self.nonlinear_interference_noise[link][span] = {}
 
+    # GETTERS TO BE REMOVED
     def get_active_channel_power(self, link_id, span_id, channel):
         return self.active_channels[link_id][span_id]["power"][channel]
 
@@ -62,59 +75,62 @@ class TransmissionSystem(object):
         :return: Run transmission system, returning True on success
         """
 
-        active_channels = {"power": {}, "power_original": {}, "ase_noise": {}, "nli_noise": {}, "wdg": {}}
-
+        input_power = {}
+        output_power = {}
+        signal_power_nonlinear = {}
+        amplified_spontaneous_emission_noise = {}
+        nonlinear_interference_noise = {}
+        wdg = {}
         for signal in signals:
             signal_index = signal.index
-            active_channels["power"][signal_index] = db_to_abs(signal.launch_power)
-            active_channels["ase_noise"][signal_index] = db_to_abs(-39.0)
-            active_channels["nli_noise"][signal_index] = db_to_abs(-39.0)
+            input_power[signal_index] = db_to_abs(signal.launch_power)
+            output_power[signal_index] = db_to_abs(signal.launch_power)
+            nonlinear_interference_noise[signal_index] = db_to_abs(0.0)
 
+        # get last node in path (Rx)
+        rx_node = path[-1][0]
         # Calculate the current signal behaviour across the
         # path elements (nodes and links)
         for node, link in path:
             # If we are at the Rx node, then we are done with this path
-            if node.node_type == 'rx':
+            if node == rx_node:
                 break
             else:
                 # Calculate impairments of the node and its compensation
                 node_attenuation = db_to_abs(node.attenuation())
                 node_amplifier = node.amplifier
+                previous_amplifier = node_amplifier
 
                 for signal in signals:
                     signal_index = signal.index
                     signal_frequency = signal.frequency
-                    signal_launch_power = signal.launch_power
-                    signal_power = active_channels["power"][signal_index]
-                    signal_noise = active_channels["ase_noise"][signal_index]
-                    active_channels["power_original"][signal_index] = signal_power
+                    signal_launch_power = signal.launch_power  # MAYBE TO BE REMOVED
+                    signal_power = output_power[signal_index]
+                    # Needed for computation of nonlinear interference noise
+                    signal_power_nonlinear[signal_index] = output_power[signal_index]
 
                     signal_power = signal_power / node_attenuation
-                    signal_noise = signal_noise / node_attenuation
 
                     if node_amplifier:
-                        amplifier_target_gain = db_to_abs(node_amplifier.target_gain)
-                        amplifier_noise_figure = db_to_abs(node_amplifier.noise_figure)
+                        amplifier_target_gain = node_amplifier.target_gain
+                        amplifier_noise_figure = node_amplifier.noise_figure
                         amplifier_mode = node_amplifier.mode
                         amplifier_bandwidth = node_amplifier.bandwidth
-                        amplifier_wavelength_dependent_gain = db_to_abs(
-                            node_amplifier.wavelength_dependent_gain[signal_index])
+                        amplifier_wavelength_dependent_gain = node_amplifier.wavelength_dependent_gain[signal_index]
 
-                        # The signal (and noise) traversing the first span already
-                        # perceived the impairments of the first node
+                        signal_noise = self.stage_amplified_spontaneous_emission_noise(
+                            signal_frequency, amplifier_target_gain, amplifier_wavelength_dependent_gain,
+                            amplifier_noise_figure, amplifier_bandwidth)
+                        amplified_spontaneous_emission_noise[signal_index] = signal_noise
+
+                        # Output signal power levels after amplification
                         signal_power = self.output_amplified_power(
                             signal_power, amplifier_target_gain, amplifier_mode,
                             signal_launch_power, amplifier_wavelength_dependent_gain)
 
-                        signal_noise = self.output_amplified_noise(
-                            signal_frequency, signal_power, signal_noise,
-                            amplifier_target_gain, amplifier_mode, signal_launch_power,
-                            amplifier_wavelength_dependent_gain,
-                            amplifier_noise_figure, amplifier_bandwidth)
-
                     # Signal performance after node
-                    active_channels["power"][signal_index] = signal_power
-                    active_channels["ase_noise"][signal_index] = signal_noise
+                    # Output power levels after amplification
+                    output_power[signal_index] = signal_power
 
                 # Links are composed of fibre spans and amplifiers.
                 # Iterate through the link elements and compute the
@@ -126,171 +142,164 @@ class TransmissionSystem(object):
                     for signal in signals:
                         # Compute linear effects
                         signal_index = signal.index
-                        signal_power = active_channels["power"][signal_index]
-                        signal_noise = active_channels["ase_noise"][signal_index]
-                        signal_nli_noise = active_channels["nli_noise"][signal_index]
+                        signal_power = output_power[signal_index]
 
                         signal_power = signal_power / fibre_attenuation
-                        signal_noise = signal_noise / fibre_attenuation
                         # dispersion requires revision
                         # dispersion = self.dispersion(signal, span)
-                        # print("Dispersion computed for signal %s is: %s." % (str(signal_index), str(dispersion)))
-                        # print("Signal power: %s." % str(signal_power / dispersion))
-                        # print("Signal noise: %s." % str(signal_noise / dispersion))
+                        # signal_power = signal_power / dispersion
 
                         # Signal performance at the end of span
                         # considering linear effects
-                        active_channels["power"][signal_index] = signal_power
-                        active_channels["ase_noise"][signal_index] = signal_noise
-                        active_channels["nli_noise"][signal_index] = signal_nli_noise
+                        input_power[signal_index] = signal_power
                         if amplifier:
-                            active_channels["wdg"][signal_index] = db_to_abs(
-                                amplifier.wavelength_dependent_gain[signal_index])
+                            wdg[signal_index] = amplifier.wavelength_dependent_gain[signal_index]
 
                     # Check if active channels is  not single channel, or
                     # if the loop is not at the last EDFA.
-                    if len(active_channels["power"]) > 1:
+                    if len(input_power) > 1:
                         # Compute nonlinear effects
                         # compute SRS impairment
-                        active_channels["power"] = self.zirngibl_srs(signals,
-                                                                     active_channels["power"],
-                                                                     span)
+                        input_power = self.zirngibl_srs(signals,
+                                                        input_power,
+                                                        span)
 
                         if amplifier:
                             # Store not normalized power and noise levels
                             # to be considered in the power excursion calculation
-                            not_normalized_power = active_channels["power"]
-                            not_normalized_noise = active_channels["ase_noise"]
+                            not_normalized_power = input_power
+                            not_normalized_noise = amplified_spontaneous_emission_noise
 
                             normalized_power, normalized_noise = self.normalize_channel_levels(
-                                active_channels["power"],
-                                active_channels["ase_noise"],
-                                active_channels["wdg"])
+                                input_power,
+                                amplified_spontaneous_emission_noise,
+                                wdg)
                             # Consider power excursion and propagation per-span
-                            active_channels["power"] = self.power_excursion_propagation(
+                            input_power = self.power_excursion_propagation(
                                 normalized_power, normalized_noise,
                                 not_normalized_power, not_normalized_noise)
 
-                    if len(active_channels["power"]) > 2:
+                    if len(input_power) > 2:
                         # Compute nonlinear interference noise, passing the node_amplifier
                         # because its amplification gain impacts negatively the nonlinear
                         # interference.
                         if amplifier:
-                            active_channels["nli_noise"] = self.output_nonlinear_noise(
+                            nonlinear_interference_noise = self.output_nonlinear_noise(
                                 signals,
-                                active_channels["nli_noise"],
-                                active_channels["power_original"],
+                                nonlinear_interference_noise,
+                                signal_power_nonlinear,
                                 span,
                                 node_amplifier)
-                            self.active_channels[link][span]["nli_noise"] = active_channels["nli_noise"]
+                            self.nonlinear_interference_noise[link][span] = nonlinear_interference_noise
 
                     for signal in signals:
                         # Compute linear effects
                         signal_index = signal.index
                         signal_frequency = signal.frequency
                         signal_launch_power = signal.launch_power
-                        signal_power = active_channels["power"][signal_index]
-                        signal_noise = active_channels["ase_noise"][signal_index]
+                        signal_power = input_power[signal_index]
+
+                        self.input_power[link][span][signal_index] = signal_power * unit.mW
 
                         if amplifier:
-                            amplifier_target_gain = db_to_abs(amplifier.target_gain)
-                            amplifier_noise_figure = db_to_abs(amplifier.noise_figure)
+                            amplifier_target_gain = amplifier.target_gain
+                            amplifier_previous_gain = previous_amplifier.target_gain
+                            amplifier_noise_figure = amplifier.noise_figure
                             amplifier_mode = amplifier.mode
                             amplifier_bandwidth = node_amplifier.bandwidth
-                            amplifier_wavelength_dependent_gain = db_to_abs(
-                                amplifier.wavelength_dependent_gain[signal_index])
+                            amplifier_wavelength_dependent_gain = amplifier.wavelength_dependent_gain[signal_index]
+                            amplifier_previous_wavelength_dependent_gain = \
+                                previous_amplifier.wavelength_dependent_gain[signal_index]
 
+                            signal_noise = self.stage_amplified_spontaneous_emission_noise(
+                                signal_frequency, amplifier_previous_gain, amplifier_previous_wavelength_dependent_gain,
+                                amplifier_noise_figure, amplifier_bandwidth)
+                            self.amplified_spontaneous_emission_noise[link][span][signal_index] = signal_noise
+
+                            # Output signal power levels after amplification
                             signal_power = self.output_amplified_power(
                                 signal_power, amplifier_target_gain, amplifier_mode,
                                 signal_launch_power, amplifier_wavelength_dependent_gain)
 
-                            signal_noise = self.output_amplified_noise(
-                                signal_frequency, signal_power, signal_noise,
-                                amplifier_target_gain, amplifier_mode, signal_launch_power,
-                                amplifier_wavelength_dependent_gain,
-                                amplifier_noise_figure, amplifier_bandwidth)
+                            previous_amplifier = amplifier
 
-                        active_channels["power"][signal_index] = signal_power
-                        active_channels["ase_noise"][signal_index] = signal_noise
-                        self.active_channels[link][span]["power"][signal_index] = signal_power
-                        self.active_channels[link][span]["ase_noise"][signal_index] = signal_noise
+                        # Output power levels after amplification
+                        self.output_power[link][span][signal_index] = signal_power
 
     @staticmethod
     def dispersion(signal, span):
         symbol_rate = signal.symbol_rate
         bits_per_symbol = signal.bits_per_symbol
         gross_bit_rate = symbol_rate * np.log2(bits_per_symbol)
-        bandwidth = signal.bandwidth
+        bandwidth_nm = unit.c / signal.bandwidth
         dispersion = -(2 * unit.pi * unit.c/signal.wavelength**2) * span.dispersion_coefficient
-        dispersion_penalty = 5 * np.log10(1 + (4 * 0.1*unit.nm * 1.0e-3 * span.length * dispersion)**2)
-        return dispersion_penalty
+        dispersion_penalty = 5 * np.log10(1 + (4 * bandwidth_nm*unit.nm * gross_bit_rate * span.length * dispersion)**2)
+        dispersion_penalty_abs = db_to_abs(dispersion_penalty)
+        return dispersion_penalty_abs
 
     @staticmethod
     def output_amplified_power(signal_power, target_gain, mode, launch_power, amplifier_wavelength_dependent_gain):
         """
-        :param signal_power: power in mW (absolute value) - float
-        :param target_gain: amplifier gain in mW (absolute value) - float
+        :param signal_power: units: mW - float
+        :param target_gain: units mW (absolute value) - float
         :param mode: amplifier mode - string
-        :param launch_power: signal launch power, only used if mode=AGC - float
-        :param amplifier_wavelength_dependent_gain: amplifier WDG in mW (absolute value) - float
+        :param launch_power: units: mW, only used if mode=AGC - float
+        :param amplifier_wavelength_dependent_gain: units: mW - float
+        :param amplifier_wavelength_dependent_gain: units: mW - float
         :return: amplification-compensated power levels - float
         """
         if mode == 'AGC':
             # Adjust the gain to keep signal power constant
             target_gain = db_to_abs(abs(abs_to_db(signal_power)-launch_power))
-        return signal_power * target_gain * amplifier_wavelength_dependent_gain
-
-    def output_amplified_noise(self, signal_frequency, signal_power, noise, amplifier_target_gain, mode, launch_power,
-                               amplifier_wavelength_dependent_gain, amplifier_noise_figure, amplifier_bandwidth):
-        """
-        :param signal_frequency: speed of light / wavelength (nm) - float
-        :param signal_power: power in mW (absolute value) - float
-        :param noise: noise in mW (absolute value) - float
-        :param amplifier_target_gain: amplifier gain in mW (absolute value) - float
-        :param mode: amplifier mode - string
-        :param launch_power: signal launch power, only used if mode=AGC - float
-        :param amplifier_wavelength_dependent_gain: amplifier WDG in mW (absolute value) - float
-        :param amplifier_noise_figure: float
-        :param amplifier_bandwidth: float
-        :return: Amplified Spontaneous Emission (ASE) noise - float
-        """
-        if mode == 'AGC':
-            # Adjust the gain to keep signal power constant
-            amplifier_target_gain = db_to_abs(abs(abs_to_db(signal_power)-launch_power))
-        ase_noise = self.output_ase_noise(signal_frequency, noise,
-                                          amplifier_wavelength_dependent_gain * amplifier_target_gain,
-                                          amplifier_noise_figure, amplifier_bandwidth)
-        return ase_noise
+        # Conversion from dB to linear
+        target_gain_linear = db_to_abs(target_gain)
+        wavelength_dependent_gain_linear = db_to_abs(amplifier_wavelength_dependent_gain)
+        return signal_power * target_gain_linear * wavelength_dependent_gain_linear
 
     @staticmethod
-    def output_ase_noise(signal_frequency, noise, system_gain, amplifier_noise_figure, amplifier_bandwidth):
+    def stage_amplified_spontaneous_emission_noise(signal_frequency, amplifier_target_gain,
+                                                   amplifier_wavelength_dependent_gain,
+                                                   amplifier_noise_figure, amplifier_bandwidth):
         """
-        :param signal_frequency: speed of light/wavelength (nm) - float
-        :param noise: noise attributed to signal considered - float
-        :param system_gain: EDFA target gain + wavelength dependent gain - float
-        :param amplifier_noise_figure: float
-        :param amplifier_bandwidth: float
-        :return: accumulated noise at given interface - float
+        :param signal_frequency: units: THz
+        :param amplifier_target_gain: units: dB
+        :param amplifier_wavelength_dependent_gain: units: dB
+        :param amplifier_noise_figure: units: dB
+        :param amplifier_bandwidth: units: GHz
+        :return: ASE noise in linear form
+        Ch.5 Eqs. 4-16,18 in: Gumaste A, Antony T. DWDM network designs and engineering solutions. Cisco Press; 2003.
         """
-        # Calculation of the amplified spontaneous emission (ASE) noise.
-        out_noise = (noise * system_gain) + \
-                    (amplifier_noise_figure * sc.h * system_gain * signal_frequency * 1000 * amplifier_bandwidth)
-        return out_noise
 
-    def output_nonlinear_noise(self, signals, nli_noise, active_channels, span, node_amplifier):
+        # Compute parameters needed for ASE model
+        population_inversion = 0.5 * 10**(amplifier_noise_figure/10.0)
+        amplifier_gain = amplifier_target_gain - 1
+
+        # Conversion from dB to linear
+        gain_linear = db_to_abs(amplifier_gain)
+        wavelength_dependent_gain_linear = db_to_abs(amplifier_wavelength_dependent_gain)
+
+        # Calculation of the amplified spontaneous emission (ASE) noise.
+        # Simpler formula
+        # ase_noise = db_to_abs(amplifier_noise_figure) * sc.h * signal_frequency * amplifier_bandwidth
+        ase_noise = 2 * population_inversion * (gain_linear * wavelength_dependent_gain_linear) * \
+            sc.h * signal_frequency * amplifier_bandwidth
+        return ase_noise
+
+    def output_nonlinear_noise(self, signals, nonlinear_interference_noise,
+                               signal_power_nonlinear, span, node_amplifier):
         """
         :param signals: signals interacting at given transmission - list[Signal() object]
-        :param nli_noise: accumulated NLI noise per active signal - dict{signal_index: NLI noise levels}
-        :param active_channels: power levels at beginning of span - dict{signal_index: power levels}
+        :param nonlinear_interference_noise: accumulated NLI noise - dict{signal_index: NLI noise levels}
+        :param signal_power_nonlinear: power levels at beginning of span - dict{signal_index: power levels}
         :param span: Span() object
         :param node_amplifier: Amplifier() object at beginning of span
         :return: dict{signal_index: accumulated NLI noise levels}
         """
         node_amplifier_gain = db_to_abs(node_amplifier.target_gain)
-        nonlinear_noise = self.nonlinear_noise(signals, active_channels, span, node_amplifier_gain)
+        nonlinear_noise = self.nonlinear_noise(signals, signal_power_nonlinear, span, node_amplifier_gain)
         out_noise = {}
         for signal_index, value in nonlinear_noise.items():
-            out_noise[signal_index] = nli_noise[signal_index] + nonlinear_noise[signal_index]
+            out_noise[signal_index] = nonlinear_interference_noise[signal_index] + nonlinear_noise[signal_index]
         return out_noise
 
     @staticmethod
@@ -303,23 +312,23 @@ class TransmissionSystem(object):
         """
         return x * -1
 
-    def nonlinear_noise(self, signals, active_channels, span, lump_gain):
+    def nonlinear_noise(self, signals, signal_power, span, lump_gain):
         """
         Computation taken from: Poggiolini, P., et al. "Accurate Non-Linearity Fully-Closed-Form Formula
         based on the GN/EGN Model and Large-Data-Set Fitting." Optical Fiber Communication Conference.
         Optical Society of America, 2019. Equations 1-4
 
         :param signals: signals interacting at given transmission - list[Signal() object]
-        :param active_channels: power levels at beginning of span - dict{signal_index: power levels}
+        :param signal_power: power levels at beginning of span - dict{signal_index: power levels}
         :param span: Span() object
         :param lump_gain: EDFA target gain + wavelength dependent gain - float
         :return: Nonlinear Interference noise - dictionary{signal_index: NLI}
         """
         nonlinear_noise_struct = {}
-        channels_index = sorted(active_channels.keys())
+        channels_index = sorted(signal_power.keys())
         for channel_index in channels_index:
             nonlinear_noise_struct[channel_index] = None
-        channel_center = channels_index[int(math.floor(len(active_channels.keys()) / 2))]
+        channel_center = channels_index[int(math.floor(len(signal_power.keys()) / 2))]
         for signal in signals:
             if signal.index == channel_center:
                 frequency_center = signal.frequency
@@ -339,7 +348,7 @@ class TransmissionSystem(object):
             bits_per_symbol_cut = signal.bits_per_symbol
             gross_bit_rate_cut = symbol_rate_cut * np.log2(bits_per_symbol_cut)
             bw_cut = gross_bit_rate_cut / (2 * np.log2(4))  # full bandwidth of the nth channel (THz).
-            pwr_cut = active_channels[signal.index]
+            pwr_cut = signal_power[signal.index]
             g_cut = pwr_cut / bw_cut  # G is the flat PSD per channel power (per polarization)
 
             nonlinear_noise_term2 = 0
@@ -354,7 +363,7 @@ class TransmissionSystem(object):
                 bits_per_symbol_ch = signal.bits_per_symbol
                 gross_bit_rate_ch = symbol_rate_ch * np.log2(bits_per_symbol_ch)
                 bw_ch = gross_bit_rate_ch / (2 * np.log2(4))  # full bandwidth of the nth channel (THz).
-                pwr_ch = active_channels[ch.index]
+                pwr_ch = signal_power[ch.index]
                 g_ch = pwr_ch / bw_ch  # G is the flat PSD per channel power (per polarization)
 
                 b2_eff_nch = b2 + unit.pi * b3 * (
@@ -432,20 +441,19 @@ class TransmissionSystem(object):
         return active_channels
 
     @staticmethod
-    def normalize_channel_levels(power_levels, noise_levels, loaded_gains):
+    def normalize_channel_levels(power_levels, noise_levels, wavelength_dependent_gains):
         """
-        :param power_levels: list[float,]
-        :param noise_levels: list[float,]
-        :param loaded_gains: list[float,]
+        :param power_levels: units: mW - list[float,]
+        :param noise_levels: units: linear - list[float,]
+        :param wavelength_dependent_gains: units: dB list[float,]
         :return: dictionary of normalized power and noise - dict{signal_index: power/noise}
         """
-        # Add amplifier attenuation of each channel
+        # Sum amplifier attenuation for each channel
         # Calculate the main system gain of the loaded channels
         # (i.e. mean wavelength gain)
-        loaded_gains_abs = loaded_gains.values()
-        loaded_gains_db = [abs_to_db(x) for x in loaded_gains_abs]
+        loaded_gains_db = wavelength_dependent_gains.values()
         total_system_gain_db = sum(loaded_gains_db)
-        channel_count = len(loaded_gains)
+        channel_count = len(wavelength_dependent_gains)
         mean_system_gain_db = total_system_gain_db/float(channel_count)
         mean_system_gain_abs = db_to_abs(mean_system_gain_db)
 

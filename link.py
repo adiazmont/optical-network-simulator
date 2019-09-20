@@ -7,7 +7,7 @@ SpanTuple = namedtuple('Span', 'span amplifier')
 
 class Link:
 
-    def __init__(self, src_node, dst_node):
+    def __init__(self, src_node, dst_node, bidirection=False):
         """
         :param src_node: Node() object
         :param dst_node: Node() object
@@ -17,6 +17,7 @@ class Link:
         self.link_id = id(self)
         self.src_node = src_node
         self.dst_node = dst_node
+        self.bidirection = bidirection
         self.spans = []
 
     def add_span(self, span, amplifier):

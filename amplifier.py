@@ -7,11 +7,11 @@ class Amplifier:
     def __init__(self, target_gain=18.0, noise_figure=6.0, mode=None,
                  bandwidth=12.5e9, wavelength_dependent_gain_id='wdg1'):
         """
-        :param target_gain: amplifier gain in dB - float
-        :param noise_figure: float
+        :param target_gain: units: dB - float
+        :param noise_figure: units: dB float
         :param mode: None or AGC - string
-        :param bandwidth: amplification bandwidth - float
-        :param wavelength_dependent_gain_id: file name id (see top of script) - string
+        :param bandwidth: measurement optical bandwidth units: GHz - float
+        :param wavelength_dependent_gain_id: file name id (see top of script) units: dB - string
         """
         self.amplifier_id = id(self)
         self.target_gain = target_gain
