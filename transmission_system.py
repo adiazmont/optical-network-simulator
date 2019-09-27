@@ -361,7 +361,6 @@ class TransmissionSystem(object):
                             frequency_ch + frequency_cut - 2 * frequency_center)  # FWM-factor - [1], Eq. (5)
                 b2_eff_ncut = b2 + unit.pi * b3 * (
                         2 * frequency_cut - 2 * frequency_center)  # FWM-factor - [1], Eq. (6)
-                tmp_b2_eff_nch = abs(b2_eff_nch)
 
                 nch_dividend1 = math.asinh(
                     (unit.pi ** 2 / 2) * abs(b2_eff_nch / alpha) *
