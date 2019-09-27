@@ -303,16 +303,7 @@ class TransmissionSystem(object):
         return out_noise
 
     @staticmethod
-    def my_abs(x):
-        """
-        This function is used due to the fact built-in abs()
-        shows bugs when used for NLI noise computation.
-        :param x: negative value - float
-        :return: distance to 0 - float
-        """
-        return x * -1
-
-    def nonlinear_noise(self, signals, signal_power, span, lump_gain):
+    def nonlinear_noise(signals, signal_power, span, lump_gain):
         """
         Computation taken from: Poggiolini, P., et al. "Accurate Non-Linearity Fully-Closed-Form Formula
         based on the GN/EGN Model and Large-Data-Set Fitting." Optical Fiber Communication Conference.
@@ -370,22 +361,23 @@ class TransmissionSystem(object):
                             frequency_ch + frequency_cut - 2 * frequency_center)  # FWM-factor - [1], Eq. (5)
                 b2_eff_ncut = b2 + unit.pi * b3 * (
                         2 * frequency_cut - 2 * frequency_center)  # FWM-factor - [1], Eq. (6)
+                tmp_b2_eff_nch = abs(b2_eff_nch)
 
                 nch_dividend1 = math.asinh(
-                    (unit.pi ** 2 / 2) * self.my_abs(b2_eff_nch / alpha) *
+                    (unit.pi ** 2 / 2) * abs(b2_eff_nch / alpha) *
                     (frequency_ch - frequency_cut + (bw_ch / 2)) * bw_cut)
-                nch_divisor1 = 8 * unit.pi * self.my_abs(b2_eff_nch) * alpha
+                nch_divisor1 = 8 * unit.pi * abs(b2_eff_nch) * alpha
 
                 nch_dividend2 = math.asinh(
-                    (unit.pi ** 2 / 2) * self.my_abs(b2_eff_nch / alpha) *
+                    (unit.pi ** 2 / 2) * abs(b2_eff_nch / alpha) *
                     (frequency_ch - frequency_cut - (bw_ch / 2)) * bw_cut)
-                nch_divisor2 = 8 * unit.pi * self.my_abs(b2_eff_nch) * alpha
+                nch_divisor2 = 8 * unit.pi * abs(b2_eff_nch) * alpha
 
                 _nch = (nch_dividend1 / float(nch_divisor1)) - (
                             nch_dividend2 / float(nch_divisor2))  # [1], Eq. (3)
 
-                cut_dividend = math.asinh((unit.pi ** 2 / 2) * self.my_abs(b2_eff_ncut / (2 * alpha)) * bw_cut ** 2)
-                cut_divisor = 4 * unit.pi * self.my_abs(b2_eff_ncut) * alpha
+                cut_dividend = math.asinh((unit.pi ** 2 / 2) * abs(b2_eff_ncut / (2 * alpha)) * bw_cut ** 2)
+                cut_divisor = 4 * unit.pi * abs(b2_eff_ncut) * alpha
                 _cut = cut_dividend / float(cut_divisor)  # [1], Eq. (4)
 
                 nonlinear_noise_term2 += (2 * g_ch ** 2 * _nch + g_cut ** 2 * _cut)
