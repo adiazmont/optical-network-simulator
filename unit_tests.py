@@ -4,7 +4,6 @@ from link import Link
 from span import Span
 from amplifier import Amplifier
 from optical_signal import OpticalSignal
-from graphics import Graphic
 import numpy as np
 
 
@@ -24,148 +23,6 @@ def db_to_abs(db_value):
     """
     absolute_value = 10**(db_value/float(10))
     return absolute_value
-
-
-def inspect_osnr_per_span(topology='linear', osnr_type='osnr'):
-    """
-    :param topology: type of topology defined in class Scripts - string
-    :param osnr_type: type of OSNR to compute (OSNR or gOSNR) - string
-    :return: plot the corresponding figure to the parameter to inspect, considering all the
-                spans for each transmission.
-    """
-    channel_list = [list(range(1, 9)), list(range(1, 17)), list(range(1, 33)), list(range(1, 65))]
-    channel_index = range(len(channel_list))
-    inspect_values = {x: None for x in channel_index}
-    spans_length = {x: None for x in channel_index}
-    for index, channels in zip(channel_index, channel_list):
-        my_network = UnitTest(topo='linear', link_length=500, span_length=100, channels=channels)
-        # uncomment to get the centre channel
-        # i = int(len(channels) / 2)
-        # below use index-[0] for first wavelength
-        # and index-[-1] for last wavelength
-        cut = channels[-1]  # channel under test
-        if topology == 'linear':
-            tmp_osnr_values = []
-            tmp_spans_length = []
-            for span in my_network.spans:
-                power = my_network.net.inspect_power_and_noise(
-                    my_network.l1, span, cut)['signal_power']
-                noise = my_network.net.inspect_power_and_noise(
-                    my_network.l1, span, cut)['signal_ase_noise']
-                if osnr_type == 'gosnr':
-                    noise = my_network.net.inspect_power_and_noise(
-                        my_network.l1, span, cut)['total_noise']
-
-                osnr = power - noise
-                tmp_osnr_values.append(osnr)
-                tmp_spans_length.append(span.length / 1000.0)
-            inspect_values[index] = tmp_osnr_values
-            spans_length[index] = tmp_spans_length
-    graphics = Graphic()
-    graphics.plot_osnr(inspect_values, spans_length, osnr_type)
-
-
-def inspect_osnr_per_distance(topology='linear', osnr_type='osnr'):
-    """
-    :param topology: type of topology defined in class UnitTest - string
-    :param osnr_type: type of OSNR to compute (OSNR or gOSNR) - string
-    :return: plot the corresponding figure to the parameter to inspect, considering only
-                the last span for each transmission.
-    """
-    channel_list = [list(range(1, 9)), list(range(1, 17)), list(range(1, 33)), list(range(1, 65))]
-    channel_index = range(len(channel_list))
-    inspect_values = {x: None for x in channel_index}
-    distances = [100, 200, 500, 1000, 2000, 3000]
-    for index, channels in zip(channel_index, channel_list):
-        tmp_osnr_values = []
-        for distance in distances:
-            my_network = UnitTest(topo='linear', link_length=distance, span_length=100, channels=channels)
-            # uncomment to get the centre channel
-            # i = int(len(channels) / 2)
-            # below use index-[0] for first wavelength
-            # and index-[-1] for last wavelength
-            cut = channels[0]  # channel under test
-            if topology == 'linear':
-                power = my_network.net.inspect_power_and_noise(
-                    my_network.l1, my_network.spans[-1], cut)['signal_power']
-                noise = my_network.net.inspect_power_and_noise(
-                    my_network.l1, my_network.spans[-1], cut)['signal_ase_noise']
-                if osnr_type == 'gosnr':
-                    noise = my_network.net.inspect_power_and_noise(
-                        my_network.l1, my_network.spans[-1], cut)['total_noise']
-                osnr = power - noise
-                tmp_osnr_values.append(osnr)
-            del my_network
-        inspect_values[index] = tmp_osnr_values
-
-    graphics = Graphic()
-    graphics.plot_osnr_per_distance(inspect_values, distances, osnr_type)
-
-
-def inspect_transmission_per_span(topology='linear', param=None):
-    """
-    :param topology: type of topology defined in class UnitTest
-    :param param: parameter to inspect: 'signal_power', 'signal_ase_noise' or 'signal_nli_noise'
-    :return: plot the corresponding figure to the parameter to inspect, considering all the
-                spans for each transmission.
-    """
-    channel_list = [list(range(1, 9)), list(range(1, 17)), list(range(1, 33)), list(range(1, 65))]
-    channel_index = range(len(channel_list))
-    inspect_values = {x: None for x in channel_index}
-    spans_length = {x: None for x in channel_index}
-    for index, channels in zip(channel_index, channel_list):
-        my_network = UnitTest(topo='linear', link_length=500, span_length=100, channels=channels)
-        # uncomment to get the centre channel
-        # i = int(len(channels) / 2)
-        # below use index-[0] for first wavelength
-        # and index-[-1] for last wavelength
-        cut = channels[-1]  # channel under test
-        if topology == 'linear':
-            tmp_values = []
-            tmp_spans_length = []
-            for span in my_network.spans:
-                tmp_values.append(my_network.net.inspect_power_and_noise(
-                    my_network.l1, span, cut)[param])
-                tmp_spans_length.append(span.length/1000.0)
-            inspect_values[index] = tmp_values
-            spans_length[index] = tmp_spans_length
-    graphics = Graphic()
-    if param == 'signal_power':
-        graphics.plot_dict_power_levels(inspect_values, spans_length)
-    if param == 'signal_ase_noise' or param == 'signal_nli_noise':
-        graphics.plot_dict_noise_levels(inspect_values, spans_length)
-
-
-def inspect_transmission_per_distance(topology='linear', param=None):
-    """
-    :param topology: type of topology defined in class UnitTest
-    :param param: parameter to inspect: 'signal_power', 'signal_ase_noise' or 'signal_nli_noise'
-    :return: plot the corresponding figure to the parameter to inspect, considering only
-                the last span for each transmission.
-    """
-    channel_list = [list(range(1, 9)), list(range(1, 17)), list(range(1, 33)), list(range(1, 65))]
-    channel_index = range(len(channel_list))
-    inspect_values = {x: None for x in channel_index}
-    distances = [100, 200, 500, 1000, 2000, 3000]
-    for index, channels in zip(channel_index, channel_list):
-        tmp_values = []
-        for distance in distances:
-            my_network = UnitTest(topo='linear', link_length=distance, span_length=100, channels=channels)
-            # uncomment to get the centre channel
-            # i = int(len(channels) / 2)
-            # below use index-[0] for first wavelength
-            # and index-[-1] for last wavelength
-            cut = channels[0]  # channel under test
-            if topology == 'linear':
-                tmp_values.append(my_network.net.inspect_power_and_noise(
-                    my_network.l1, my_network.spans[-1], cut)[param])
-            del my_network
-        inspect_values[index] = tmp_values
-    graphics = Graphic()
-    if param == 'signal_power':
-        graphics.plot_dict_power_levels_distance(inspect_values, distances)
-    if param == 'signal_ase_noise' or param == 'signal_nli_noise':
-        graphics.plot_dict_noise_levels_distance(inspect_values, distances)
 
 
 class UnitTest:
@@ -297,19 +154,11 @@ class UnitTest:
             self.net.transmit(self.n1, self.n2, signals, route)
 
 
-# Uncomment the lines below to generate the figures found
-# in the subfolder ons-validation
-# inspect_osnr_per_distance(osnr_type='gosnr')
-# inspect_osnr_per_span(osnr_type='gosnr')
-# inspect_transmission_per_span(param='signal_nli_noise')
-# inspect_transmission_per_distance(param='signal_nli_noise')
 # my_network = UnitTest(topo='linear', link_length=500, span_length=100, channels=list(range(1, 9)))
 my_network = UnitTest()
 # osnr = my_network.net.monitor(my_network.l1, my_network.span_link1, 83, my_network.links)
 # osnr = my_network.net.monitor(my_network.l2, my_network.span_link2, 83, my_network.links)
 # osnr = my_network.net.monitor(my_network.l5, my_network.span_link5, 83, my_network.links)
 osnr = my_network.net.monitor(my_network.l6, my_network.span_link6, 83, my_network.links)
-osnr = my_network.net.monitor(my_network.l6, my_network.span_link6, 81, my_network.links)
+# osnr = my_network.net.monitor(my_network.l6, my_network.span_link6, 81, my_network.links)
 # osnr = my_network.net.monitor(my_network.l7, my_network.span_link7, 83, my_network.links)
-# graphics = Graphic()
-# graphics.inspect_srs_before_edfa()

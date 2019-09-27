@@ -34,8 +34,6 @@ class TransmissionSystem(object):
         #       {channel_id: amplifier_attenuation}]
         #   }
         # }
-        # Stores the values of each active channel without considering nonlinearities.
-        self.active_channels = {}  # TO BE REMOVED
         self.input_power = {}
         self.output_power = {}
         self.amplified_spontaneous_emission_noise = {}
@@ -44,28 +42,16 @@ class TransmissionSystem(object):
     def init_interfaces(self, links):
 
         for link in links:
-            self.active_channels[link] = {}
             self.input_power[link] = {}
             self.output_power[link] = {}
             self.amplified_spontaneous_emission_noise[link] = {}
             self.nonlinear_interference_noise[link] = {}
             spans = link.spans
             for span, _amplifier in spans:
-                self.active_channels[link][span] = {"power": {}, "ase_noise": {}, "nli_noise": {}, "wdg": {}}
                 self.input_power[link][span] = {}
                 self.output_power[link][span] = {}
                 self.amplified_spontaneous_emission_noise[link][span] = {}
                 self.nonlinear_interference_noise[link][span] = {}
-
-    # GETTERS TO BE REMOVED
-    def get_active_channel_power(self, link_id, span_id, channel):
-        return self.active_channels[link_id][span_id]["power"][channel]
-
-    def get_active_channel_ase_noise(self, link_id, span_id, channel):
-        return self.active_channels[link_id][span_id]["ase_noise"][channel]
-
-    def get_active_channel_nli_noise(self, link_id, span_id, channel):
-        return self.active_channels[link_id][span_id]["nli_noise"][channel]
 
     def propagate(self, path, signals):
         """

@@ -94,26 +94,26 @@ class CIANTestbed:
         osnr_values = []
         spans_length = []
         osnr_values.append(abs_to_db((10**(-2.0/10.0)*0.8-(10**(-39.0/10.0)*4))/(10**(-39.0/10.0))))
-        print(abs_to_db((10**(-2.0/10.0)*0.8-(10**(-39.0/10.0)*4))/(10**(-39.0/10.0))))
+        # print(abs_to_db((10**(-2.0/10.0)*0.8-(10**(-39.0/10.0)*4))/(10**(-39.0/10.0))))
         spans_length.append(0)
-        osnr = self.net.monitor(l1, span_link1, 83)
-        print("OSNR of channel %s (nm) is %s dB at span %s." % (
-            str(channel), str(osnr), span_link1.span_id))
+        osnr = self.net.monitor(l1, span_link1, 83, links)
+        # print("OSNR of channel %s (nm) is %s dB at span %s." % (
+        #     str(channel), str(osnr), span_link1.span_id))
         osnr_values.append(osnr)
         spans_length.append(span_link1.length)
-        osnr = self.net.monitor(l2, span_link2, 83)
-        print("OSNR of channel %s (nm) is %s dB at span %s." % (
-            str(channel), str(osnr), span_link2.span_id))
+        osnr = self.net.monitor(l2, span_link2, 83, links)
+        # print("OSNR of channel %s (nm) is %s dB at span %s." % (
+        #     str(channel), str(osnr), span_link2.span_id))
         osnr_values.append(osnr)
         spans_length.append(span_link2.length)
-        osnr = self.net.monitor(l5, span_link5, 83)
-        print("OSNR of channel %s (nm) is %s dB at span %s." % (
-            str(channel), str(osnr), span_link5.span_id))
+        osnr = self.net.monitor(l5, span_link5, 83, links)
+        # print("OSNR of channel %s (nm) is %s dB at span %s." % (
+        #     str(channel), str(osnr), span_link5.span_id))
         osnr_values.append(osnr)
         spans_length.append(span_link5.length)
-        osnr = self.net.monitor(l6, span_link6, 83)
-        print("OSNR of channel %s (nm) is %s dB at span %s." % (
-            str(channel), str(osnr), span_link6.span_id))
+        osnr = self.net.monitor(l6, span_link6, 83, links)
+        # print("OSNR of channel %s (nm) is %s dB at span %s." % (
+        #     str(channel), str(osnr), span_link6.span_id))
         osnr_values.append(osnr)
         spans_length.append(span_link6.length)
 

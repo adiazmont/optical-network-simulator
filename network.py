@@ -87,24 +87,6 @@ class Network(object):
         print("Final OSNR: %s" % str(final_osnr))
         return 0
 
-    def inspect_power_and_noise(self, link, span, signal_index):
-        """
-        :param link: Link() object
-        :param span: Span() object
-        :param signal_index: int
-        :return: dictionary with power and noise(s) level in dB at given interface
-        """
-        _struct = {
-            'signal_power': abs_to_db(self.transmission_system.get_active_channel_power(link, span, signal_index)),
-            'signal_ase_noise': abs_to_db(
-                self.transmission_system.get_active_channel_ase_noise(link, span, signal_index)),
-            'signal_nli_noise': abs_to_db(
-                self.transmission_system.get_active_channel_nli_noise(link, span, signal_index)),
-            'total_noise': abs_to_db(
-                self.transmission_system.get_active_channel_ase_noise(link, span, signal_index) +
-                self.transmission_system.get_active_channel_nli_noise(link, span, signal_index))}
-        return _struct
-
     # Dijkstra algorithm for finding shortest path
     def find_path(self, src_node, dst_node):
         """
